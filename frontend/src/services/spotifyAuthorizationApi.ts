@@ -22,13 +22,26 @@ class SpotifyAuthorizationApi {
         'Content-Type': 'application/x-www-form-urlencoded'
       }
     });
-  } catch {
-    return
+  } catch(err) {
+    return Promise.reject(err)
   }
 }
 
-  async refreshAccessToken(refresh_token: string): Promise<void> {
-    console.log("refresh token", refresh_token);
+  async refreshAccessToken(refresh_token: string): Promise<axios.AxiosResponse> {
+    try {
+      console.log('refreshing token');
+      return await axios.default.post(this.authUrl, new URLSearchParams({
+        grant_type: 'refresh_token',
+        refresh_token: refresh_token,
+        client_id: this.clientId
+      }), {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        }
+      });
+    } catch(err) {
+      return Promise.reject(err);
+    }
   }
 }
 

@@ -13,28 +13,28 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const AuthProvider = ({children}) => {
+const AuthProvider = ({children}: { children: React.ReactNode }) => {
   const [accessToken, setAccessToken] = useState('');
   const [refreshToken, setRefreshToken] = useState('');
-  const [expiresIn, setExpiresIn] = useState(-1);
+  const [expiresIn, setExpiresIn] = useState(0);
   const location = useLocation();
 
+  // For Initial Login
   useEffect(() => {
     const params = new URLSearchParams(location.search);
 
     if (params.get('error')) {
-      console.error('Error:', error);
+      console.error('Error:', params.get('error'));
       return
     }
 
     const fetchData = async () => {
       const spotifyAuthorizationApi = new SpotifyAuthorizationApi();
-      const response = await spotifyAuthorizationApi.requestAccessToken(params.get('code'), sessionStorage.getItem('codeVerifier') as string);
+      const response = await spotifyAuthorizationApi.requestAccessToken(params.get('code') as string, sessionStorage.getItem('codeVerifier') as string);
 
       setAccessToken(response.data.access_token);
       setRefreshToken(response.data.refresh_token);
-
-      // TODO: handle expiration time
+      setExpiresIn(response.data.expires_in);
 
       window.history.replaceState({}, document.title, window.location.pathname);
       sessionStorage.removeItem('state');
@@ -44,10 +44,31 @@ const AuthProvider = ({children}) => {
       fetchData()
     }
 
-  }, [location]);
+  }, []);
+
+  // For Refreshing Token
+  useEffect(() => {
+    if (!refreshToken || !expiresIn) return;
+    const interval = setInterval(async () => {
+      const spotifyAuthorizationApi = new SpotifyAuthorizationApi();
+      try {
+        const response = await spotifyAuthorizationApi.refreshAccessToken(refreshToken);
+
+        setAccessToken(response.data.access_token);
+        setExpiresIn(response.data.expires_in);
+        if (response.data.refresh_token) {
+          setRefreshToken(response.data.refresh_token);
+        }
+      } catch (err) {
+        console.error("There was an error :( ", err);
+      }
+    }, (expiresIn - 60) * 1000);
+
+    return () => clearInterval(interval);
+  }, [refreshToken, expiresIn]);
 
   return (
-    <AuthContext.Provider value={{ accessToken, setAccessToken, refreshToken, setRefreshToken, expiresIn, setExpiresIn }}>
+    <AuthContext.Provider value={{accessToken, setAccessToken, refreshToken, setRefreshToken, expiresIn, setExpiresIn}}>
       {children}
     </AuthContext.Provider>
   );
