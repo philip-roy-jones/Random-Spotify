@@ -1,6 +1,7 @@
 import {useEffect, useContext, createContext, useState} from 'react';
 import {useLocation} from 'react-router-dom';
 import SpotifyAuthorizationApi from "../services/spotifyAuthorizationApi";
+import {SpotifyPlayerProvider} from "./SpotifyPlayerContext.tsx";
 
 type AuthContextType = {
   accessToken: string;
@@ -69,7 +70,8 @@ const AuthProvider = ({children}: { children: React.ReactNode }) => {
 
   return (
     <AuthContext.Provider value={{accessToken, setAccessToken, refreshToken, setRefreshToken, expiresIn, setExpiresIn}}>
-      {children}
+      <SpotifyPlayerProvider children={children}>
+      </SpotifyPlayerProvider>
     </AuthContext.Provider>
   );
 };
