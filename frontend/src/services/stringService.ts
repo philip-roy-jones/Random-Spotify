@@ -1,6 +1,6 @@
 import characterRanges from '../characterRanges.json';
 
-export default function randomStringGenerator(length: number): string {
+export default function generateRandomString(length: number): string {
   const randomScriptPosition = Math.floor(Math.random() * characterRanges.length);
   const script = characterRanges[randomScriptPosition];
   let result = '';
@@ -13,5 +13,22 @@ export default function randomStringGenerator(length: number): string {
     result += String.fromCharCode(Math.floor(Math.random() * (upperBound - lowerBound)) + lowerBound);
   }
 
+  result = sanitizeInput(result);
+
+  if (!result) generateRandomString(length);
   return result;
+}
+
+// Ensures the input is valid UTF-8
+function sanitizeInput(input: string): string {
+  try {
+    // Normalize the input and encode to ensure it's valid UTF-8
+    const encoder = new TextEncoder();
+    const decoder = new TextDecoder();
+    const utf8 = encoder.encode(input);
+    return decoder.decode(utf8);
+  } catch (error) {
+    console.error("Failed to encode the input:", error);
+    return '';
+  }
 }

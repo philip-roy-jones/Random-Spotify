@@ -1,6 +1,6 @@
 import generateCodeVerifier from 'pkce-challenge';
 
-const SpotifyLoginButton = () => {
+const LoginButton = () => {
 
   const authorize = (codeChallenge: string): void => {
     const scope = "user-read-private user-read-email streaming user-modify-playback-state user-read-playback-state";
@@ -40,4 +40,4 @@ const SpotifyLoginButton = () => {
   );
 };
 
-export default SpotifyLoginButton;
+export default LoginButton;
