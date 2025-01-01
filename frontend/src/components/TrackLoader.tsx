@@ -6,11 +6,12 @@ import RandomPlayer from "./RandomPlayer.tsx";
 import Cover from "./Cover.tsx";
 import generateRandomString from "../services/stringService.ts";
 import {PlayerArtist, PlayerTrack} from "../types/PlayerState.ts";
-import { SpotifyTrack } from "../types/Spotify.ts";
+import {SpotifyTrack} from "../types/Spotify.ts";
 
 const TrackLoader = () => {
   const {accessToken} = useAuth();
   const [trackUris, setTrackUris] = useState<string[]>([]);
+  const [offset, setOffset] = useState<number>(0);
   const [currentTrack, setCurrentTrack] = useState<PlayerTrack | null>(null);
   const hasFetchedInitialTracks = useRef(false);
 
@@ -39,11 +40,21 @@ const TrackLoader = () => {
     }
   }
 
+  const addTracksToQueue = async () => {
+    const newTracks = await Promise.all([fetchRandomTrack(), fetchRandomTrack(), fetchRandomTrack(), fetchRandomTrack(), fetchRandomTrack()]);
+    const newTrackUris = newTracks.map(track => track.uri);
+
+    const combinedTrackUris = [...trackUris, ...newTrackUris];
+    setOffset(trackUris.length);
+    setTrackUris(combinedTrackUris);
+  }
+
   useLayoutEffect(() => {
     const getInitialTrack = async () => {
-      const initialTracks = await Promise.all([fetchRandomTrack(), fetchRandomTrack(), fetchRandomTrack()]);
+      const initialTracks = await Promise.all([fetchRandomTrack(), fetchRandomTrack(), fetchRandomTrack(), fetchRandomTrack(), fetchRandomTrack()]);
       const initialTrackUris = initialTracks.map(track => track.uri);
-
+      console.log("Initial Tracks URIs: ", initialTrackUris);
+      console.log("Access Token: ", accessToken);
       setTrackUris(initialTrackUris);
       setCurrentTrack(convertToPlayerTrack(initialTracks[0]));
     };
@@ -56,7 +67,8 @@ const TrackLoader = () => {
   return (
     <main className="h-screen w-screen flex flex-col">
       <Cover currentTrack={currentTrack}/>
-      <RandomPlayer trackUris={trackUris} currentTrack={currentTrack} setCurrentTrack={setCurrentTrack}/>
+      <RandomPlayer trackUris={trackUris} currentTrack={currentTrack} setCurrentTrack={setCurrentTrack}
+                    addTracksToQueue={addTracksToQueue} offset={offset}/>
     </main>
   );
 };
