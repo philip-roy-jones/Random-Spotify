@@ -1,4 +1,4 @@
-import {useEffect, useContext, createContext, useState} from 'react';
+import {useEffect, useContext, createContext, useState, useRef} from 'react';
 import {useLocation} from 'react-router-dom';
 import SpotifyAuthorizationApi from "../services/spotifyAuthorizationApi";
 
@@ -18,10 +18,13 @@ const AuthProvider = ({children}: { children: React.ReactNode }) => {
   const [refreshToken, setRefreshToken] = useState('');
   const [expiresIn, setExpiresIn] = useState(0);
   const location = useLocation();
+  const hasFetchedTokensRef = useRef(false);
 
   // For Initial Login
   useEffect(() => {
     const params = new URLSearchParams(location.search);
+
+    if (!params.get('code')) return;    // When user first loads the page, there is no code in the URL
 
     if (params.get('error')) {
       console.error('Error:', params.get('error'));
@@ -29,6 +32,8 @@ const AuthProvider = ({children}: { children: React.ReactNode }) => {
     }
 
     const fetchData = async () => {
+      hasFetchedTokensRef.current = true;   // This has to be set before the fetch request because if response is 400, it won't be set to true
+
       const spotifyAuthorizationApi = new SpotifyAuthorizationApi();
       const response = await spotifyAuthorizationApi.requestAccessToken(params.get('code') as string, sessionStorage.getItem('codeVerifier') as string);
 
@@ -40,7 +45,7 @@ const AuthProvider = ({children}: { children: React.ReactNode }) => {
       sessionStorage.removeItem('state');
     }
 
-    if (params.get('code') && params.get('state') === sessionStorage.getItem('state')) {
+    if (params.get('code') && params.get('state') === sessionStorage.getItem('state') && !hasFetchedTokensRef.current) {
       fetchData()
     }
 

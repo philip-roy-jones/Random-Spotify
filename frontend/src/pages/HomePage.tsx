@@ -1,13 +1,13 @@
 import LoginButton from "../components/LoginButton.tsx";
 import {useAuth} from "../components/AuthProvider.tsx";
-import RandomPlayer from "../components/RandomPlayer.tsx";
+import TrackLoader from "../components/TrackLoader.tsx";
 
 const HomePage = () => {
   const {accessToken} = useAuth();
 
   return (
     <div className="flex justify-center items-center min-h-screen">
-      {accessToken ? <RandomPlayer /> : <LoginButton/>}
+      {accessToken ? <TrackLoader /> : <LoginButton/>}
     </div>
   );
 };

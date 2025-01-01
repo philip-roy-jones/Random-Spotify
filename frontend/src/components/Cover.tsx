@@ -1,5 +1,6 @@
-const Cover = ({currentTrack}) => {
-  console.log(currentTrack);
+import {PlayerTrack} from "../types/PlayerState.ts";
+
+const Cover = ({currentTrack}: {currentTrack: PlayerTrack | null}) => {
 
   return (
     <div className="flex justify-center items-center">
