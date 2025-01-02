@@ -53,8 +53,7 @@ const TrackLoader = () => {
     const getInitialTrack = async () => {
       const initialTracks = await Promise.all([fetchRandomTrack(), fetchRandomTrack(), fetchRandomTrack(), fetchRandomTrack(), fetchRandomTrack()]);
       const initialTrackUris = initialTracks.map(track => track.uri);
-      console.log("Initial Tracks URIs: ", initialTrackUris);
-      console.log("Access Token: ", accessToken);
+
       setTrackUris(initialTrackUris);
       setCurrentTrack(convertToPlayerTrack(initialTracks[0]));
     };

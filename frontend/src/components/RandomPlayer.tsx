@@ -22,7 +22,6 @@ const RandomPlayer = ({trackUris, currentTrack, setCurrentTrack, addTracksToQueu
     if (!state.currentURI) return;
 
     if (state.type === "track_update" && !state.isPlaying) {
-      console.log("Ran out of tracks.");
       addTracksToQueue();
     }
   }
@@ -40,9 +39,6 @@ const RandomPlayer = ({trackUris, currentTrack, setCurrentTrack, addTracksToQueu
         play={offset !== 0}
         preloadData={trackUris.length > 0}
         callback={(state) => {
-          // if (!state.currentURI) return;
-
-          console.log(state);
           handleTrackChange(state);
           handleEnd(state);
         }}
