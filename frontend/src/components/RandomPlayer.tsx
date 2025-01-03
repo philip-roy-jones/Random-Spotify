@@ -64,7 +64,7 @@ const RandomPlayer = ({trackQueue, currentTrack, setCurrentTrack, addTracksToQue
         play={offset !== 0}
         preloadData={trackQueue.size > 0}
         callback={(state) => {
-          // console.log(state);
+          console.log(state);
           handleTrackChange(state);
           handleEnd(state);
         }}

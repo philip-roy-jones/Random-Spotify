@@ -107,10 +107,7 @@ const TrackLoader = () => {
     if (hasFetchedInitialTracks.current) return;
     hasFetchedInitialTracks.current = true;
 
-    const wrappedGetInitialTrack = measureExecutionTime(getInitialTrack);
-    wrappedGetInitialTrack();
-    // getInitialTrack();
-
+    getInitialTrack();
     preloadNextTracks()
   }, []);
 
