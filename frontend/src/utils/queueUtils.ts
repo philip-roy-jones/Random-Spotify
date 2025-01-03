@@ -20,6 +20,11 @@ export function peek<T>(key: string): T | null {
   return queue.length > 0 ? queue[0] : null; // Return the first item or null if the queue is empty
 }
 
+export function getQueueLength(key: string): number {
+  const queue = getQueue(key); // Retrieve the current queue
+  return queue.length; // Return the length of the queue
+}
+
 
 function getQueue<T>(key: string): T[] {
   const queue = sessionStorage.getItem(key);

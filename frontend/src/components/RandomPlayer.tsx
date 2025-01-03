@@ -1,7 +1,6 @@
 import {useAuth} from "./AuthProvider.tsx";
 import SpotifyWebPlayer, {CallbackState} from "react-spotify-web-playback";
 import {PlayerTrack} from "../types/PlayerState.ts";
-import {measureExecutionTime} from "../utils/performanceUtils.ts";
 import {SpotifyTrack} from "../types/Spotify.ts";
 
 const RandomPlayer = ({trackQueue, currentTrack, setCurrentTrack, addTracksToQueue, offset}: {
@@ -48,8 +47,7 @@ const RandomPlayer = ({trackQueue, currentTrack, setCurrentTrack, addTracksToQue
     if (!state.currentURI) return;
 
     if (state.type === "track_update" && !state.isPlaying) {
-      const wrapped = measureExecutionTime(addTracksToQueue);
-      wrapped();
+      addTracksToQueue();
     }
   }
 

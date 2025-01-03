@@ -8,7 +8,7 @@ import generateRandomString from "../services/stringService.ts";
 import {PlayerArtist, PlayerTrack} from "../types/PlayerState.ts";
 import {SpotifyTrack} from "../types/Spotify.ts";
 import {measureExecutionTime} from "../utils/performanceUtils.ts";
-import {enqueue, dequeue} from "../utils/queueUtils.ts";
+import {enqueue, dequeue, getQueueLength} from "../utils/queueUtils.ts";
 
 const TrackLoader = () => {
   const {accessToken} = useAuth();
@@ -16,6 +16,8 @@ const TrackLoader = () => {
   const [offset, setOffset] = useState<number>(0);
   const [currentTrack, setCurrentTrack] = useState<PlayerTrack | null>(null);
   const hasFetchedInitialTracks = useRef(false);
+
+  const preloadedTracksQueueName = "preloadedTracks";
 
   const fetchRandomTrack = async (): Promise<SpotifyTrack> => {
     const spotifyWebApi = new SpotifyWebApi(accessToken);
@@ -67,15 +69,18 @@ const TrackLoader = () => {
   }
 
   const preloadNextTracks = async () => {
-    const numberOfTracksToPreload = 5;
-    const newTracks = JSON.stringify(await fetchMultipleRandomTracks(numberOfTracksToPreload));
-    enqueue("preloadTracks", newTracks);
+    const maxNumberOfMapsInQueue = 2;
+    if (getQueueLength(preloadedTracksQueueName) >= maxNumberOfMapsInQueue) return;
+
+    const numberOfTracksInAMap = 5;
+    const newTracks = await fetchMultipleRandomTracks(numberOfTracksInAMap);
+    const stringifiedNewTracks = JSON.stringify(Array.from(newTracks.entries()));
+    enqueue(preloadedTracksQueueName, stringifiedNewTracks);
   }
 
   const loadNextTracks = () => {
-    const preloadedTracksAsString = dequeue<string>("preloadTracks");
-    console.log("Preloaded tracks: ", preloadedTracksAsString);
-    return new Map<string, SpotifyTrack>(Object.entries(JSON.parse(preloadedTracksAsString || "{}")));  // Convert string to Map
+    const preloadedTracksAsString = dequeue<string>(preloadedTracksQueueName);
+    return new Map<string, SpotifyTrack>(JSON.parse(preloadedTracksAsString || "[]"));
   }
 
   const addTracksToQueue = async () => {
