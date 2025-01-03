@@ -43,6 +43,7 @@ const AuthProvider = ({children}: { children: React.ReactNode }) => {
 
       window.history.replaceState({}, document.title, window.location.pathname);
       sessionStorage.removeItem('state');
+      sessionStorage.removeItem('codeVerifier');
     }
 
     if (params.get('code') && params.get('state') === sessionStorage.getItem('state') && !hasFetchedTokensRef.current) {

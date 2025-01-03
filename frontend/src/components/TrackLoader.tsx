@@ -7,15 +7,17 @@ import Cover from "./Cover.tsx";
 import generateRandomString from "../services/stringService.ts";
 import {PlayerArtist, PlayerTrack} from "../types/PlayerState.ts";
 import {SpotifyTrack} from "../types/Spotify.ts";
+import {measureExecutionTime} from "../utils/performanceUtils.ts";
+import {enqueue, dequeue} from "../utils/queueUtils.ts";
 
 const TrackLoader = () => {
   const {accessToken} = useAuth();
-  const [trackUris, setTrackUris] = useState<string[]>([]);
+  const [trackQueue, setTrackQueue] = useState<Map<string, SpotifyTrack>>(new Map());
   const [offset, setOffset] = useState<number>(0);
   const [currentTrack, setCurrentTrack] = useState<PlayerTrack | null>(null);
   const hasFetchedInitialTracks = useRef(false);
 
-  const fetchRandomTrack = async () => {
+  const fetchRandomTrack = async (): Promise<SpotifyTrack> => {
     const spotifyWebApi = new SpotifyWebApi(accessToken);
     while (true) {
       const randomString = generateRandomString(10);
@@ -29,6 +31,30 @@ const TrackLoader = () => {
     }
   };
 
+  const fetchMultipleRandomTracks = async (limit: number): Promise<Map<string, SpotifyTrack>> => {
+    const uniqueTracks = new Map<string, SpotifyTrack>();
+
+    while (uniqueTracks.size < limit) {
+      const trackPromises = Array.from({length: limit - uniqueTracks.size}, () => fetchRandomTrack());
+      const tempTrackQueue = await Promise.all(trackPromises);
+      tempTrackQueue.forEach(track => uniqueTracks.set(track.uri, track));
+    }
+
+    return uniqueTracks;
+  };
+
+  // Merge two maps, return the number of new tracks added
+  const mergeTrackMaps = (map1: Map<string, SpotifyTrack>, map2: Map<string, SpotifyTrack>): number => {
+    let mergedCount = 0;
+    map2.forEach((value, key) => {
+      if (!map1.has(key)) {
+        map1.set(key, value);
+        mergedCount++;
+      }
+    });
+    return mergedCount;
+  }
+
   const convertToPlayerTrack = (data: SpotifyTrack): PlayerTrack => {
     return {
       artists: data.artists.map((artist: PlayerArtist) => ({name: artist.name, uri: artist.uri})),
@@ -40,33 +66,53 @@ const TrackLoader = () => {
     }
   }
 
-  const addTracksToQueue = async () => {
-    const newTracks = await Promise.all([fetchRandomTrack(), fetchRandomTrack(), fetchRandomTrack(), fetchRandomTrack(), fetchRandomTrack()]);
-    const newTrackUris = newTracks.map(track => track.uri);
+  const preloadNextTracks = async () => {
+    const numberOfTracksToPreload = 5;
+    const newTracks = JSON.stringify(await fetchMultipleRandomTracks(numberOfTracksToPreload));
+    enqueue("preloadTracks", newTracks);
+  }
 
-    const combinedTrackUris = [...trackUris, ...newTrackUris];
-    setOffset(trackUris.length);
-    setTrackUris(combinedTrackUris);
+  const loadNextTracks = () => {
+    const preloadedTracksAsString = dequeue<string>("preloadTracks");
+    console.log("Preloaded tracks: ", preloadedTracksAsString);
+    return new Map<string, SpotifyTrack>(Object.entries(JSON.parse(preloadedTracksAsString || "{}")));  // Convert string to Map
+  }
+
+  const addTracksToQueue = async () => {
+    const nextTracks: Map<string, SpotifyTrack> = loadNextTracks() as Map<string, SpotifyTrack>;
+    const newTrackCount = mergeTrackMaps(trackQueue, nextTracks);
+
+    preloadNextTracks();    // Keep async so it doesn't block the UI
+
+    setOffset(trackQueue.size - newTrackCount);
+    setTrackQueue(trackQueue);
   }
 
   useLayoutEffect(() => {
     const getInitialTrack = async () => {
-      const initialTracks = await Promise.all([fetchRandomTrack(), fetchRandomTrack(), fetchRandomTrack(), fetchRandomTrack(), fetchRandomTrack()]);
-      const initialTrackUris = initialTracks.map(track => track.uri);
+      const initialTracks = await fetchMultipleRandomTracks(5);
 
-      setTrackUris(initialTrackUris);
-      setCurrentTrack(convertToPlayerTrack(initialTracks[0]));
+      initialTracks.forEach((track, key) => {
+        if (key === initialTracks.keys().next().value) setCurrentTrack(convertToPlayerTrack(track));
+        trackQueue.set(track.uri, track);
+      })
+
+      setTrackQueue(trackQueue);
     };
     if (hasFetchedInitialTracks.current) return;
     hasFetchedInitialTracks.current = true;
 
-    getInitialTrack();
+    const wrappedGetInitialTrack = measureExecutionTime(getInitialTrack);
+    wrappedGetInitialTrack();
+    // getInitialTrack();
+
+    preloadNextTracks()
   }, []);
 
   return (
     <main className="h-screen w-screen flex flex-col">
       <Cover currentTrack={currentTrack}/>
-      <RandomPlayer trackUris={trackUris} currentTrack={currentTrack} setCurrentTrack={setCurrentTrack}
+      <RandomPlayer trackQueue={trackQueue} currentTrack={currentTrack} setCurrentTrack={setCurrentTrack}
                     addTracksToQueue={addTracksToQueue} offset={offset}/>
     </main>
   );
