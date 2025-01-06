@@ -1,23 +1,22 @@
-// src/components/TrackLoader.tsx
-import {useState, useLayoutEffect, useRef} from "react";
+import {useLayoutEffect, useRef, useState} from "react";
 import SpotifyWebApi from "../services/spotifyWebApi.ts";
 import {useAuth} from "./AuthProvider.tsx";
 import RandomPlayer from "./RandomPlayer.tsx";
 import Cover from "./Cover.tsx";
 import generateRandomString from "../services/stringService.ts";
-import {PlayerArtist, PlayerTrack} from "../types/PlayerState.ts";
+import {PlayerTrack} from "../types/PlayerState.ts";
 import {SpotifyTrack} from "../types/Spotify.ts";
-import {measureExecutionTime} from "../utils/performanceUtils.ts";
 import {enqueue, dequeue, getQueueLength} from "../utils/queueUtils.ts";
+import {spotifyApi, SpotifyPlayOptions} from "react-spotify-web-playback";
 
 const TrackLoader = () => {
   const {accessToken} = useAuth();
-  const [trackQueue, setTrackQueue] = useState<Map<string, SpotifyTrack>>(new Map());
-  const [offset, setOffset] = useState<number>(0);
-  const [currentTrack, setCurrentTrack] = useState<PlayerTrack | null>(null);
+  const trackQueue = useRef<Map<string, SpotifyTrack>>(new Map());
+  const offset = useRef<number>(0);
+  const currentTrackRef = useRef<PlayerTrack | null>(null);
   const hasFetchedInitialTracks = useRef(false);
-
   const preloadedTracksQueueName = "preloadedTracks";
+  const [, setInitialTracksLoaded] = useState(false);
 
   const fetchRandomTrack = async (): Promise<SpotifyTrack> => {
     const spotifyWebApi = new SpotifyWebApi(accessToken);
@@ -57,6 +56,7 @@ const TrackLoader = () => {
     return mergedCount;
   }
 
+  /*
   const convertToPlayerTrack = (data: SpotifyTrack): PlayerTrack => {
     return {
       artists: data.artists.map((artist: PlayerArtist) => ({name: artist.name, uri: artist.uri})),
@@ -67,7 +67,7 @@ const TrackLoader = () => {
       uri: data.uri
     }
   }
-
+   */
   const preloadNextTracks = async () => {
     const maxNumberOfMapsInQueue = 2;
     if (getQueueLength(preloadedTracksQueueName) >= maxNumberOfMapsInQueue) return;
@@ -85,26 +85,39 @@ const TrackLoader = () => {
 
   const addTracksToQueue = async () => {
     const nextTracks: Map<string, SpotifyTrack> = loadNextTracks() as Map<string, SpotifyTrack>;
-    const newTrackCount = mergeTrackMaps(trackQueue, nextTracks);
+    const newTrackCount = mergeTrackMaps(trackQueue.current, nextTracks);
 
     preloadNextTracks();    // Keep async so it doesn't block the UI
 
-    setOffset(trackQueue.size - newTrackCount);
-    setTrackQueue(trackQueue);
+    offset.current = trackQueue.current.size - newTrackCount;
+
+    const currentDevice = sessionStorage.getItem('rswpDeviceId');
+
+    if (currentDevice) {
+      const playOptions: SpotifyPlayOptions = {
+        uris: Array.from(trackQueue.current.keys()),
+        offset: offset.current,
+        deviceId: currentDevice
+      };
+      spotifyApi.play(accessToken, playOptions);
+    } else {
+      console.error("No device found");
+    }
+
   }
 
   useLayoutEffect(() => {
     const getInitialTrack = async () => {
       const initialTracks = await fetchMultipleRandomTracks(5);
 
-      initialTracks.forEach((track, key) => {
-        if (key === initialTracks.keys().next().value) setCurrentTrack(convertToPlayerTrack(track));
-        trackQueue.set(track.uri, track);
+      initialTracks.forEach((track) => {
+        // if (key === initialTracks.keys().next().value) setCurrentTrackState(convertToPlayerTrack(track));
+        trackQueue.current.set(track.uri, track);
       })
 
-      setTrackQueue(trackQueue);
+      setInitialTracksLoaded(true);
     };
-    if (hasFetchedInitialTracks.current) return;
+    if (hasFetchedInitialTracks.current) return;    // For react strict mode, double rendering
     hasFetchedInitialTracks.current = true;
 
     getInitialTrack();
@@ -113,8 +126,8 @@ const TrackLoader = () => {
 
   return (
     <main className="h-screen w-screen flex flex-col">
-      <Cover currentTrack={currentTrack}/>
-      <RandomPlayer trackQueue={trackQueue} currentTrack={currentTrack} setCurrentTrack={setCurrentTrack}
+      <Cover/>
+      <RandomPlayer trackQueue={trackQueue} currentTrackRef={currentTrackRef}
                     addTracksToQueue={addTracksToQueue} offset={offset}/>
     </main>
   );

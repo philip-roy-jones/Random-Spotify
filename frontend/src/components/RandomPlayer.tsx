@@ -1,18 +1,17 @@
 import {useAuth} from "./AuthProvider.tsx";
-import SpotifyWebPlayer, {CallbackState} from "react-spotify-web-playback";
+import SpotifyPlayer, {CallbackState} from "react-spotify-web-playback";
 import {PlayerTrack} from "../types/PlayerState.ts";
 import {SpotifyTrack} from "../types/Spotify.ts";
 
-const RandomPlayer = ({trackQueue, currentTrack, setCurrentTrack, addTracksToQueue, offset}: {
-  trackQueue: Map<string, SpotifyTrack>,
-  currentTrack: PlayerTrack | null,
-  setCurrentTrack: (track: PlayerTrack) => void,
+const RandomPlayer = ({trackQueue, currentTrackRef, addTracksToQueue, offset}: {
+  trackQueue: React.MutableRefObject<Map<string, SpotifyTrack>>,
+  currentTrackRef: React.MutableRefObject<PlayerTrack | null>,
   addTracksToQueue: () => void,
-  offset: number
+  offset: React.MutableRefObject<number>
 }) => {
 
   const {accessToken} = useAuth();
-
+  console.log("Rendering RandomPlayer");
   // For development purposes, log the time it takes for the player to initialize
   /*
   const renderStartTime = useRef<number>(0);
@@ -38,8 +37,8 @@ const RandomPlayer = ({trackQueue, currentTrack, setCurrentTrack, addTracksToQue
   }
 */
   const handleTrackChange = async (state: CallbackState) => {
-    if (state.track.id !== currentTrack?.id) {
-      setCurrentTrack(state.track);
+    if (state.track.id !== currentTrackRef.current?.id) {
+      // console.log("track should change");
     }
   }
 
@@ -53,18 +52,21 @@ const RandomPlayer = ({trackQueue, currentTrack, setCurrentTrack, addTracksToQue
 
   return (
     <div className={"w-full justify-self-end"}>
-      <SpotifyWebPlayer
-        key={Array.from(trackQueue.keys()).join("")}
+      <SpotifyPlayer
+        key={Array.from(trackQueue.current.keys()).join("")}
         token={accessToken}
-        uris={Array.from(trackQueue.keys())}
+        uris={Array.from(trackQueue.current.keys())}
         initialVolume={0.1}
         name="Random Spotify Player"
+        persistDeviceSelection={true}
+        magnifySliderOnHover={true}
+        showSaveIcon={true}
+        syncExternalDevice={true}
         syncExternalDeviceInterval={3}
-        offset={offset}
-        play={offset !== 0}
-        preloadData={trackQueue.size > 0}
+        offset={offset.current}
+        preloadData={trackQueue.current.size > 0}
         callback={(state) => {
-          console.log(state);
+          // console.log(state);
           handleTrackChange(state);
           handleEnd(state);
         }}

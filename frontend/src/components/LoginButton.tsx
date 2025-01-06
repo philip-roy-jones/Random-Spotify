@@ -3,7 +3,7 @@ import generateCodeVerifier from 'pkce-challenge';
 const LoginButton = () => {
 
   const authorize = (codeChallenge: string): void => {
-    const scope = "user-read-private user-read-email streaming user-modify-playback-state user-read-playback-state";
+    const scope = "user-read-private user-read-email streaming user-modify-playback-state user-read-playback-state user-library-read user-library-modify";
     const authUrl = new URL("https://accounts.spotify.com/authorize");
     const redirectUri = import.meta.env.VITE_SPOTIFY_REDIRECT_URI;
     const state = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
